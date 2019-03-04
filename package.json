@@ -1,26 +1,34 @@
 {
-    "name": "priority-deque",
-    "version": "1.0.0",
-    "description": "A double-ended priority queue based on min-max heaps.",
-    "license": "MIT",
-    "main": "dist/priority-queue.js",
-    "types": "dist/priority-queue.d.ts",
-    "files": ["dist/**/*"],
-    "scripts": {
-      "prepare": "npm run build",
-      "build": "node ./node_modules/typescript/bin/tsc"
-    },
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/gliese1337/priority-deque.git"
-    },
-    "keywords": ["queue", "deque"],
-    "author": "Logan R. Kearsley",
-    "bugs": {
-      "url": "https://github.com/gliese1337/priority-deque/issues"
-    },
-    "homepage": "https://github.com/gliese1337/gpc#readme",
-    "devDependencies": {
-      "typescript": "^3.3.3333"
-    }
+  "name": "priority-deque",
+  "version": "1.0.0",
+  "description": "A double-ended priority queue based on min-max heaps.",
+  "license": "MIT",
+  "main": "dist/priority-queue.js",
+  "types": "dist/priority-queue.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "node ./node_modules/typescript/bin/tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gliese1337/priority-deque.git"
+  },
+  "keywords": [
+    "queue",
+    "deque"
+  ],
+  "author": "Logan R. Kearsley",
+  "bugs": {
+    "url": "https://github.com/gliese1337/priority-deque/issues"
+  },
+  "homepage": "https://github.com/gliese1337/gpc#readme",
+  "devDependencies": {
+    "typescript": "^3.3.3333"
+  },
+  "dependencies": {
+    "floyd-rivest": "^1.0.1"
   }
+}

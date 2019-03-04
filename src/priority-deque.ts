@@ -1,6 +1,4 @@
-enum Level {
-    MIN = 0, MAX = 1
-}
+import { select } from 'floyd-rivest';
 
 enum CMP {
     LT = -1,
@@ -8,37 +6,31 @@ enum CMP {
     GT = 1,
 }
 
-type Comparator<E> = (a: E, b: E) => CMP;
-
-const defaultComp = <E>(a: E, b: E) => {
+const defaultComp = <T>(a: T, b: T) => {
     if(typeof a === 'number') return Math.sign(a - (+b));
     return (""+a).localeCompare(""+b);
 }
 
-function parent(i: number): number {
-    return i === 0 ? -1 : ((i - 1) >> 1);
+function isMinLevel(i: number): boolean {
+    return (Math.log2(i + 1) & 1) === 0;
 }
 
-function getLevel(i: number): Level {
-    return Math.floor(Math.log2(i + 1)) & 1;
-}
+export class PriorityDeque<T> {
 
-export class PriorityDeque<E> {
-
-    private heap: E[] = [];
+    private heap: T[] = [];
 
     private size = 0;
 
     private limit = Infinity;
 
-    private compare: Comparator<E> = defaultComp;
+    private compare: (a: T, b: T) => CMP = defaultComp;
 
     public constructor(opts: {
-        compare?: Comparator<E>,
+        compare?: (a: T, b: T) => number,
         limit?: number,
-        items?: { [Symbol.iterator](): IterableIterator<E> },
-    }) {
-        if (typeof opts.compare === 'function') {
+        items?: Iterable<T>,
+    } = {}) {
+        if (typeof opts.compare === 'function' && opts.compare !== defaultComp) {
             const c = opts.compare;
             this.compare = (a, b) => Math.sign(c(a, b));
         }
@@ -46,10 +38,19 @@ export class PriorityDeque<E> {
             this.limit = opts.limit;
         }
         if (opts.items && typeof opts.items[Symbol.iterator] === 'function') {
-            this.heap = [...opts.items];
-            this.build_heap(); 
+            this.set(opts.items); 
         }
     }
+
+    public clone(): PriorityDeque<T> {
+        const pd = new PriorityDeque({ compare: this.compare, limit: this.limit });
+        pd.heap = [...this.heap];
+        pd.size = this.size;
+
+        return pd;
+    }
+
+    /** Heap Maintenance Methods **/
 
     private reheap(i: number) {
         for (; i >= 0; i--) {
@@ -57,20 +58,30 @@ export class PriorityDeque<E> {
         }
     }
 
-    private build_heap() {
-        const { length } = this.heap;
-        this.size = length;
-        this.reheap(length >> 1);
-
-        while (this.size > this.limit) {
-            this.shift();
+    public set(elements: Iterable<T>) {
+        const items = [...elements];
+        const { length } = items;
+        const { limit } = this;
+        if (length > limit) {
+            select(items, limit, this.compare);
+            this.heap = items.slice(0, limit);
+            this.size = limit;
+        } else {
+            this.heap = items;
+            this.size = length;
         }
+        
+        this.reheap(this.size >> 1);
+    }
+
+    public clear() {
+        this.heap.length = 0;
+        this.size = 0;
     }
 
     private trickleDown(i: number) {
         const { heap, compare } = this;
-        const ismin = Level.MIN === getLevel(i);
-        const [LT, GT] = ismin ? [CMP.LT, CMP.GT] : [CMP.GT, CMP.LT];
+        const [LT, GT] = isMinLevel(i) ? [CMP.LT, CMP.GT] : [CMP.GT, CMP.LT];
 
         while (true) {
             const { has, m, isgc } = this.getSmallestDescendent(i, GT);
@@ -83,7 +94,7 @@ export class PriorityDeque<E> {
                 heap[m] = hi;
 
                 if(isgc) {
-                    const p = parent(m);
+                    const p = (m - 1) >> 1;
                     const hp = heap[p];
                     if (compare(hi, hp) === GT) {
                         heap[p] = hi;
@@ -142,98 +153,74 @@ export class PriorityDeque<E> {
         }; 
     }
 
-    public [Symbol.iterator](): IterableIterator<E> {
+    private bubbleUp(i: number) { // i is always > 0
+        const { heap, compare } = this;
+        const p = (i - 1) >> 1;
+        const hi = heap[i];
+        const hp = heap[p];
+        const cmp = compare(hi, hp);
+
+        let LT = CMP.LT;
+        if (isMinLevel(i)) {
+            if (cmp === CMP.GT) {
+                heap[i] = hp;
+                heap[p] = hi;
+                i = p;
+                LT = CMP.GT;
+            }
+        } else if (cmp === CMP.LT) {
+            heap[i] = hp;
+            heap[p] = hi;
+            i = p;
+        } else {
+            LT = CMP.GT;
+        }
+        
+        while (true) {
+            if (i < 3) break;
+            const gp = (((i - 1) >> 1) - 1) >> 1;
+
+            const hi = heap[i];
+            const hp = heap[gp];
+            if (compare(hi, hp) === LT) {
+                heap[i] = hp;
+                heap[gp] = hi;
+                i = gp;
+            } else break;
+        }
+    }
+
+    /** Array-Like Methods **/
+
+    public [Symbol.iterator](): IterableIterator<T> {
         return this.heap.values();
-    }
-
-    public map<F>(fn: (e: E) => F, compare: Comparator<F> = defaultComp) {
-        const pd = new PriorityDeque({ compare, limit: this.limit });
-        pd.heap = this.heap.map(fn);
-        pd.build_heap();
-
-        return pd;
-    }
-
-    public filter(fn: (e: E) => boolean) {
-        const pd = new PriorityDeque({ compare: this.compare, limit: this.limit });
-        pd.heap = this.heap.filter(fn);
-        pd.build_heap();
-
-        return pd;
-    }
-
-    public some(fn: (e: E) => boolean) {
-        return this.heap.some(fn);
-    }
-
-    public every(fn: (e: E) => boolean) {
-        return this.heap.every(fn);
-    }
-
-    public find(fn: (e: E) => boolean) {
-        return this.heap.find(fn);
-    }
-
-    public forEach(fn: (e: E) => void) {
-        this.heap.forEach(fn);
     }
 
     public get length() {
         return this.size;
     }
 
-    public pop(): E | undefined {
-        if (this.size === 0) return undefined;
-
-        return this.removeAt(0);
-    }
-
-    public shift(): E | undefined {
-        if (this.size === 0) return undefined;
-
-        return this.removeAt(this.maxIndex());
-    }
-
-    public peekMin(): E | undefined {
-        return this.size > 0 ? this.heap[0] : undefined;
-    }
-
-    public peekMax() : E | undefined {
-        return this.size > 0 ? this.heap[this.maxIndex()] : undefined;
-    }
-
-    private maxIndex() {
-        if (this.size < 2) return 0;
-        if (this.size === 2) return 1;
-
-        const { heap } = this;
-        
-        return this.compare(heap[1], heap[2]) === CMP.LT ? 2 : 1;
-    }
-
-    public clone(): PriorityDeque<E> {
-        const pd = new PriorityDeque({ compare: this.compare, limit: this.limit });
-        pd.heap = [...this.heap];
-        pd.size = this.size;
-
-        return pd;
-    }
-
-    public push(...elements: E[]) {
+    public push(...elements: T[]) {
         if (this.limit === 0) return;
+        if (elements.length === 0) return;
 
         const { heap, compare } = this;
 
-        let i = 0;
         const l = elements.length;
         const addable = Math.min(this.limit - this.size, l);
+
+        let i = 0;
+        if (this.size === 0) {
+            heap[0] = elements[0];
+            this.size = 1;
+            i = 1;
+        }
+
         for (; i < addable; i++) {
             const e = elements[i];
             const index = this.size++;
             this.heap[index] = e;
-            if (index > 0) {
-                this.bubbleUp(index);
-            }
+            this.bubbleUp(index);
         }
 
         if (this.limit === 1) {
@@ -262,11 +249,98 @@ export class PriorityDeque<E> {
         }
     }
 
-    public unshift(...elements: E[]) {
+    public pop(): T | undefined {
+        if (this.size === 0) return undefined;
+
+        return this.removeAt(0);
+    }
+
+    public shift(): T | undefined {
+        if (this.size === 0) return undefined;
+
+        return this.removeAt(this.maxIndex());
+    }
+
+    public unshift(...elements: T[]) {
         this.push(...elements);
     }
 
-    public replaceMin(e: E) {
+    public map<U>(fn: (e: T) => U, compare: (a: U, b: U) => number = defaultComp): PriorityDeque<U>  {
+        const pd = new PriorityDeque({ compare, limit: this.limit });
+        pd.heap = this.heap.map(fn);
+        pd.size = this.size;
+        pd.reheap(this.size >> 1);
+
+        return pd;
+    }
+
+    public filter(fn: (e: T) => boolean): PriorityDeque<T>  {
+        const pd = new PriorityDeque({ compare: this.compare, limit: this.limit });
+        pd.heap = this.heap.filter(fn);
+        pd.size = pd.heap.length;
+        pd.reheap(pd.size >> 1);
+
+        return pd;
+    }
+
+    public collect<U>(
+        fn: (e: T) => Iterable<U>,
+        compare: (a: U, b: U) => number = defaultComp
+    ): PriorityDeque<U> {
+        const pd = new PriorityDeque({ compare, limit: this.limit });
+        const heap: U[] = [];
+        for (const e of this.heap) {
+            for (const v of fn(e)) {
+                heap.push(v);
+            }
+        }
+        pd.heap = heap;
+        pd.size = heap.length;
+        pd.reheap(pd.size >> 1);
+
+        return pd;
+    }
+
+    public contains(e: T): boolean {
+        return this.heap.indexOf(e) > -1;
+    }
+
+    public some(fn: (e: T) => boolean): boolean {
+        return this.heap.some(fn);
+    }
+
+    public every(fn: (e: T) => boolean): boolean {
+        return this.heap.every(fn);
+    }
+
+    public find(fn: (e: T) => boolean): T | undefined {
+        return this.heap.find(fn);
+    }
+
+    public forEach(fn: (e: T) => void) {
+        this.heap.forEach(fn);
+    }
+
+    /** Heap-Specific Methods **/
+
+    public findMin(): T | undefined {
+        return this.size > 0 ? this.heap[0] : undefined;
+    }
+
+    public findMax() : T | undefined {
+        return this.size > 0 ? this.heap[this.maxIndex()] : undefined;
+    }
+
+    private maxIndex() {
+        if (this.size < 2) return 0;
+        if (this.size === 2) return 1;
+
+        const { heap } = this;
+        
+        return this.compare(heap[1], heap[2]) === CMP.LT ? 2 : 1;
+    }
+
+    public replaceMin(e: T): T | undefined {
         if (this.limit === 0) return undefined;
 
         const { heap } = this;
@@ -281,7 +355,7 @@ export class PriorityDeque<E> {
         return minE;
     }
 
-    public replaceMax(e: E) {
+    public replaceMax(e: T): T | undefined {
         if (this.limit === 0) return undefined;
 
         const { heap } = this;
@@ -299,51 +373,7 @@ export class PriorityDeque<E> {
         return maxE;
     }
 
-    private bubbleUp(i: number) {
-        const { heap, compare } = this;
-        const p = parent(i);
-        let LT = CMP.LT;
-        let hi = heap[i];
-        let hp = heap[p];
-        if (Level.MIN === getLevel(i)) {
-            if (p > -1 && compare(hi, hp) === CMP.GT) {
-                heap[i] = hp;
-                heap[p] = hi;
-                i = p;
-                LT = CMP.GT;
-            }
-        } else if (p > -1 && compare(hi, hp) === CMP.LT) {
-            heap[i] = hp;
-            heap[p] = hi;
-            i = p;
-        } else {
-            LT = CMP.GT;
-        }
-        
-        while (true) {
-            if (i < 3) break;
-            const gp = (((i - 1) >> 1) - 1) >> 1;
-
-            hi = heap[i];
-            hp = heap[gp];
-            if (compare(hi, hp) === LT) {
-                heap[i] = hp;
-                heap[gp] = hi;
-                i = gp;
-            } else break;
-        }
-    }
-
-    public contains(e: E): boolean {
-        return this.heap.indexOf(e) > -1;
-    }
-
-    public clear() {
-        this.heap.length = 0;
-        this.size = 0;
-    }
-
-    private removeAt(i: number): E {
+    private removeAt(i: number): T {
         this.size--;
         const { size, heap } = this;
         const ret = heap[i];
@@ -358,7 +388,7 @@ export class PriorityDeque<E> {
         return ret;
     }
 
-    public remove(e: E): boolean {
+    public remove(e: T): boolean {
         const { heap } = this;
         const i = heap.indexOf(e);
         if (i === -1) return false;
@@ -368,7 +398,7 @@ export class PriorityDeque<E> {
         return true;
     }
 
-    public replace(a: E, b: E): boolean {
+    public replace(a: T, b: T): boolean {
         const { heap } = this;
         const i = heap.indexOf(a);
         if (i === -1) return false;
