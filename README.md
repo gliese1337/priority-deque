@@ -8,7 +8,7 @@ API
 * `new PriorityDeque<T>(opts?: { compare?: (a: T, b: T) => number, limit?: number, items?: Iterable<T> })` Constructs a new `PriorityDeque`. By default, there are no size limits, numbers will be compared numerically, and all other objects will be compared by converting to strings and calling `String.localeCompare()`. If a finite non-negative `limit` is provided, the deque will automatically prune maximal elements to keep the total size of the structure less than or equal to `limit`.
 * `clone(): PriorityDeque<T>` Creates a shallow copy of the deque with the same size limits and comparison function in O(n) time.
 * `set(elements: Iterable<T>)` Replaces the contents of the deque with the smallest members, up to the size limit, of a new element set.
-`clear()` Empties the deque.
+* `clear()` Empties the deque.
 
 Array-Like Methods
 ----
@@ -22,7 +22,7 @@ Array-Like Methods
 * `map<U>(fn: (e: T) => U, compare?: (a: T, b: T) => number): PriorityDeque<U>` Creates a new `PriorityDeque` with the same limits as the current one by applying a mapping function to each element of the current deque. If an explicit comparison function is not provided for the new deque, the default numeric / string comparator will be used.
 * `filter(fn: (e: T) => boolean): PriorityDeque<T>` Creates a new `PriorityDeque` with the same limits and comparison function as the current one but containing only a subset of the current deque's elements which satisfy the provided filtering predicate.
 * `collect<U>(fn: (e: T) => Iterable<U>, compare?: (a: U, b: U) => number): PriorityDeque<U>` Creates a new `PriorityDeque` with the same limits as the current one by applying a collection function return 0 or more mapped elements to each element of the current deque. This is more efficient than calling `filter()` and `map()` in sequence. If an explicit comparison function is not provided for the new deque, the default numeric / string comparator will be used.
-* `contains(e: T): boolean` Determines whether or not the deque contains a specific elements, via `===` comparison.
+* `contains(e: T): boolean` Determines whether or not the deque contains a specific element, via `===` comparison.
 * `some(fn: (e: T) => boolean): boolean` Determines whether or not any element of the deque satisfies the given predicate.
 * `every(fn: (e: T) => boolean): boolean` Determines whether or not all elements of the deque satisfy the given predicate.
 * `find(fn: (e: T) => boolean): T | undefined` Returns an element of the deque which satisfies the given predicate, or `undefined` if there is no such element.

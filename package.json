@@ -1,6 +1,6 @@
 {
   "name": "priority-deque",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "A double-ended priority queue based on min-max heaps.",
   "license": "MIT",
   "main": "dist/priority-queue.js",
@@ -18,7 +18,10 @@
   },
   "keywords": [
     "queue",
-    "deque"
+    "deque",
+    "priority",
+    "heap",
+    "min-max"
   ],
   "author": "Logan R. Kearsley",
   "bugs": {

@@ -153,12 +153,13 @@ export class PriorityDeque<T> {
         }; 
     }
 
-    private bubbleUp(i: number) { // i is always > 0
+    private bubbleUp(i: number): boolean { // i is always > 0
         const { heap, compare } = this;
         const p = (i - 1) >> 1;
         const hi = heap[i];
         const hp = heap[p];
         const cmp = compare(hi, hp);
+        let moved = false;
 
         let LT = CMP.LT;
         if (isMinLevel(i)) {
@@ -167,17 +168,18 @@ export class PriorityDeque<T> {
                 heap[p] = hi;
                 i = p;
                 LT = CMP.GT;
+                moved = true;
             }
         } else if (cmp === CMP.LT) {
             heap[i] = hp;
             heap[p] = hi;
             i = p;
+            moved = true;
         } else {
             LT = CMP.GT;
         }
         
-        while (true) {
-            if (i < 3) break;
+        while (i >= 3) {
             const gp = (((i - 1) >> 1) - 1) >> 1;
 
             const hi = heap[i];
@@ -186,8 +188,11 @@ export class PriorityDeque<T> {
                 heap[i] = hp;
                 heap[gp] = hi;
                 i = gp;
+                moved = true;
             } else break;
         }
+
+        return moved;
     }
 
     /** Array-Like Methods **/
@@ -240,8 +245,9 @@ export class PriorityDeque<T> {
                 }
 
                 heap[maxI] = e;
-                this.trickleDown(maxI);
-                this.trickleDown(0);
+                if (!this.bubbleUp(maxI)) {
+                    this.trickleDown(maxI);
+                }
 
                 maxI = this.maxIndex();
                 maxE = heap[maxI];
@@ -364,8 +370,9 @@ export class PriorityDeque<T> {
         
         heap[maxI] = e;
         if (maxI > 0) {
-            this.trickleDown(maxI);
-            this.trickleDown(0);
+            if (!this.bubbleUp(maxI)) {
+                this.trickleDown(maxI);
+            }
         } else {
             this.size = 1;
         }
@@ -402,9 +409,15 @@ export class PriorityDeque<T> {
         const { heap } = this;
         const i = heap.indexOf(a);
         if (i === -1) return false;
-    
-        heap[i] = b;
-        this.reheap(i);
+        if (i === 0) {
+            heap[0] = b;
+            this.trickleDown(0);
+        } else {
+            heap[i] = b;
+            if (!this.bubbleUp(i)) {
+                this.trickleDown(i);
+            }
+        }
 
         return true;
     }
