@@ -1,4 +1,4 @@
-const { PriorityDeque } = require('../dist/priority-deque');
+const { PriorityDeque } = require('../bin');
 const items = Array.from({ length: 20 }, () => Math.round(Math.random()*100));
 
 
@@ -11,9 +11,7 @@ console.log('Max:', pd.findMax());
 console.log('Min:', pd.findMin());
 
 console.log("Pop:");
-while (pd.length) {
-    console.log(pd.pop());
-}
+while (pd.length) console.log(pd.pop());
 
 pd.clear();
 pd.push(...items);
@@ -23,9 +21,7 @@ console.log('Max:', pd.findMax());
 console.log('Min:', pd.findMin());
 
 console.log("Pop:");
-while (pd.length) {
-    console.log(pd.pop());
-}
+while (pd.length) console.log(pd.pop());
 
 
 /*

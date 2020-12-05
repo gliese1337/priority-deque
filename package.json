@@ -3,14 +3,17 @@
   "version": "1.0.4",
   "description": "A double-ended priority queue based on min-max heaps.",
   "license": "MIT",
-  "main": "dist/priority-deque.js",
-  "types": "dist/priority-deque.d.ts",
+  "main": "bin/index.min.js",
+  "types": "bin/index.d.ts",
   "files": [
-    "dist/**/*"
+    "bin/index.min.js",
+    "bin/index.d.ts"
   ],
   "scripts": {
-    "prepare": "npm run build",
-    "build": "node ./node_modules/typescript/bin/tsc"
+    "lint": "eslint . --ext .ts --fix",
+    "build": "tsc",
+    "minify": "jsmin -o bin/index.min.js bin/index.js",
+    "prepare": "tsc && npm run minify"
   },
   "repository": {
     "type": "git",
@@ -29,6 +32,10 @@
   },
   "homepage": "https://github.com/gliese1337/priority-deque#readme",
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.9.0",
+    "@typescript-eslint/parser": "^4.9.0",
+    "eslint": "^7.15.0",
+    "jsmin": "^1.0.1",
     "typescript": "^3.3.3333"
   },
   "dependencies": {

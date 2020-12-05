@@ -10,11 +10,11 @@
       "strict": true,
       "noUnusedLocals": true,
       "noUnusedParameters": true,
-      "outDir": "dist"
+      "outDir": "bin"
     },
     "exclude": [
       "node_modules",
-      "dist",
+      "bin",
       ".npm"
     ]
   }
