@@ -1,10 +1,10 @@
 {
   "name": "priority-deque",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A double-ended priority queue based on min-max heaps.",
   "license": "MIT",
-  "main": "dist/priority-queue.js",
-  "types": "dist/priority-queue.d.ts",
+  "main": "dist/priority-deque.js",
+  "types": "dist/priority-deque.d.ts",
   "files": [
     "dist/**/*"
   ],
