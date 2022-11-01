@@ -8,6 +8,7 @@ API
 * `new PriorityDeque<T>(opts?: { compare?: (a: T, b: T) => number, limit?: number, items?: Iterable<T> })` Constructs a new `PriorityDeque`. By default, there are no size limits, numbers will be compared numerically, and all other objects will be compared by converting to strings and calling `String.localeCompare()`. If a finite non-negative `limit` is provided, the deque will automatically prune maximal elements to keep the total size of the structure less than or equal to `limit`.
 * `clone(): PriorityDeque<T>` Creates a shallow copy of the deque with the same size limits and comparison function in O(n) time.
 * `set(elements: Iterable<T>)` Replaces the contents of the deque with the smallest members, up to the size limit, of a new element set.
+* `append(elements: T[])` Adds new elements to the deque.
 * `clear()` Empties the deque.
 
 Array-Like Methods

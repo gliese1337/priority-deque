@@ -15,6 +15,30 @@ function isMinLevel(i: number): boolean {
   return (Math.log2(i + 1) & 1) === 0;
 }
 
+function extremalDescendant<T>(h: T[], compare: (a: T, b: T) => CMP, i: number, C: CMP.LT | CMP.GT) {
+  const len = h.length;
+  // get the index of the smallest child or grandchild of i
+  // 2i+1, 2i+2, 4i+3, 4i+4, 4i+5, 4i+6
+  const lc = (i<<1)+1; // 2i+1, left child
+  if (lc >= len) { return -1; } // no children
+
+  // set m to the index of the smallest child or grandchild
+  const rc = lc + 1;
+  if (rc >= len) { return lc; } // if there's only one child, that's the minimum
+
+  // set m to the minimum child
+  let m = compare(h[rc], h[lc]) === C ? rc : lc;
+  // check the four grandchildren
+  let gc = (i<<2)+3;
+  const end = Math.min(gc + 4, len);
+  for (; gc < end; gc++) {
+    if (compare(h[gc], h[m]) === C) {
+      m = gc;
+    }
+  }
+  return m;
+}
+
 export class PriorityDeque<T> {
 
   private heap: T[] = [];
@@ -81,93 +105,57 @@ export class PriorityDeque<T> {
   }
 
   private trickleDown(i: number) {
-    const { heap, compare } = this;
-    const [LT, GT] = isMinLevel(i) ? [CMP.LT, CMP.GT] : [CMP.GT, CMP.LT];
-
-    while (true) {
-      const { has, m, isgc } = this.getSmallestDescendent(i, GT);
-      if (!has) break;
-
-      const [hm, hi] = [heap[m], heap[i]];
-      if (compare(hm, hi) === LT) {
-        [heap[i], heap[m]] = [hm, hi];
-
-        if(isgc) {
-          const p = (m - 1) >> 1;
-          const hp = heap[p];
-          if (compare(hi, hp) === GT) {
-            [heap[p], heap[m]] = [hi, hp];
+    const { heap: h, compare } = this;
+    let C: CMP.LT | CMP.GT = isMinLevel(i) ? CMP.LT : CMP.GT;
+    for (;;) {
+      // get the index of the smallest child or grandchild of i
+      const m = extremalDescendant(h, compare, i, C);
+      if (m === -1) { return; } // while there are children
+      const hi = h[i];
+      const hm = h[m];
+      if (compare(hm, hi) === C) { // if h[i] < h[m]
+        // swap h[m] and h[i]
+        h[i] = hm;
+        h[m] = hi;
+        if (m > ((i+1)<<1)) { // if m is a grandchild of i
+          const parent = (m-1)>>1;
+          const hp = h[parent];
+          if (compare(hp, hi) === C) {
+            // swap h[m] and h[parent(m)]
+            h[m] = hp;
+            h[parent] = hi;
           }
-          i = m;
-          continue;
+        } else {
+          // if we only moved down one level, swap max vs. min
+          C = -C;
         }
+        i = m;
+      } else {
+        break;
       }
-
-      break;
     }
-  }
-
-  private getSmallestDescendent(i: number, GT: CMP) {
-    const { heap, size, compare } = this;
-    
-    const l = (i << 1) + 1;
-    if (l >= size) return { has: false, isgc: false, m: l };
-
-    const r = l + 1;
-    if (r >= size) return { has: true, isgc: false, m: l };
-    
-    const { has: hasl, m: lc } = this.getSmallestChild(l, GT);
-    if (!hasl) {
-      return {
-        has: true,
-        isgc: false,
-        m: compare(heap[l], heap[r]) === GT ? r : l,
-      };   
-    }
-
-    const { has: hasr, m: rc } = this.getSmallestChild(r, GT);
-    if (!hasr) return { has: true, isgc: true, m: lc };
-
-    return {
-      has: true,
-      isgc: true,
-      m: compare(heap[lc], heap[rc]) === GT ? rc : lc,
-    };  
-
-  }
-
-  private getSmallestChild(i: number, GT: CMP) {
-    const { size, heap, compare } = this;
-    
-    const l = (i << 1) + 1;
-    if (l >= size) return { has: false, m: l };
-
-    const r = l + 1;
-    if (r >= size) return { has: true, m: l };
-
-    return {
-      has: true, 
-      m: compare(heap[l], heap[r]) === GT ? r : l,
-    }; 
   }
 
   private bubbleUp(i: number): boolean { // i is always > 0
     const { heap, compare } = this;
     const p = (i - 1) >> 1;
-    const [hi, hp] = [heap[i], heap[p]];
+    const hi = heap[i];
+    const hp = heap[p];
     const cmp = compare(hi, hp);
     let moved = false;
 
     let LT = CMP.LT;
     if (isMinLevel(i)) {
       if (cmp === CMP.GT) {
-        [heap[i], heap[p]] = [hp, hi];
+        heap[i] = hp;
+        heap[p] = hi;
         i = p;
         LT = CMP.GT;
         moved = true;
       }
     } else if (cmp === CMP.LT) {
-      [heap[i], heap[p]] = [hp, hi];
+      heap[i] = hp;
+      heap[p] = hi;
       i = p;
       moved = true;
     } else {
@@ -176,9 +164,11 @@ export class PriorityDeque<T> {
     
     while (i >= 3) {
       const gp = (((i - 1) >> 1) - 1) >> 1;
-      const [hi, hp] = [heap[i], heap[gp]];
+      const hi = heap[i];
+      const hp = heap[gp];
       if (compare(hi, hp) === LT) {
-        [heap[i], heap[gp]] = [hp, hi];
+        heap[i] = hp;
+        heap[gp] = hi;
         i = gp;
         moved = true;
       } else break;
@@ -198,16 +188,20 @@ export class PriorityDeque<T> {
   }
 
   public push(...elements: T[]) {
+    this.append(elements);
+  }
+
+  public append(elements: T[]) {
     if (this.limit === 0) return;
     if (elements.length === 0) return;
 
-    const { heap, compare } = this;
+    const { heap, compare, limit, size } = this;
 
     const l = elements.length;
-    const addable = Math.min(this.limit - this.size, l);
+    const addable = Math.min(limit - size, l);
 
     let i = 0;
-    if (this.size === 0) {
+    if (size === 0) {
       heap[0] = elements[0];
       this.size = 1;
       i = 1;
@@ -220,7 +214,7 @@ export class PriorityDeque<T> {
       this.bubbleUp(index);
     }
 
-    if (this.limit === 1) {
+    if (limit === 1) {
       for (; i < l; i++) {
         const e = elements[i];
         if (compare(e, heap[0]) === CMP.LT) {
@@ -256,7 +250,7 @@ export class PriorityDeque<T> {
   }
 
   public unshift(...elements: T[]) {
-    this.push(...elements);
+    this.append(elements);
   }
 
   public map<U>(fn: (e: T) => U, compare: (a: U, b: U) => number = defaultComp): PriorityDeque<U>  {

@@ -1,6 +1,6 @@
 {
   "name": "priority-deque",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "A double-ended priority queue based on min-max heaps.",
   "license": "MIT",
   "main": "bin/index.min.js",
@@ -42,7 +42,7 @@
     "jsmin": "^1.0.1",
     "mocha": "^8.2.1",
     "ts-node": "^10.9.1",
-    "typescript": "^3.3.3333"
+    "typescript": "^3.9.10"
   },
   "dependencies": {
     "floyd-rivest": "^1.0.1"
