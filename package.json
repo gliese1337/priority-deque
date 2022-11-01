@@ -10,10 +10,11 @@
     "bin/index.d.ts"
   ],
   "scripts": {
+    "test": "mocha -r ts-node/register test/**/*-test.ts",
     "lint": "eslint . --ext .ts --fix",
     "build": "tsc",
     "minify": "jsmin -o bin/index.min.js bin/index.js",
-    "prepare": "tsc && npm run minify"
+    "prepare": "tsc && npm test && npm run minify"
   },
   "repository": {
     "type": "git",
@@ -32,10 +33,15 @@
   },
   "homepage": "https://github.com/gliese1337/priority-deque#readme",
   "devDependencies": {
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^4.9.0",
     "@typescript-eslint/parser": "^4.9.0",
+    "chai": "^4.3.6",
     "eslint": "^7.15.0",
     "jsmin": "^1.0.1",
+    "mocha": "^8.2.1",
+    "ts-node": "^10.9.1",
     "typescript": "^3.3.3333"
   },
   "dependencies": {
