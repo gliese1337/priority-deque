@@ -164,7 +164,9 @@ export class PriorityDeque<T> {
         heap[gp] = hi;
         i = gp;
         moved = true;
-      } else break;
+      } else {
+        break;
+      }
     }
 
     return moved;
@@ -185,8 +187,8 @@ export class PriorityDeque<T> {
   }
 
   public append(elements: T[]) {
-    if (this.limit === 0) return;
-    if (elements.length === 0) return;
+    if (this.limit === 0) { return; }
+    if (elements.length === 0) { return; }
 
     const { heap, compare, limit } = this;
     let size = heap.length;
