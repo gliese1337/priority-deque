@@ -7,8 +7,9 @@ enum CMP {
 }
 
 const defaultComp = <T>(a: T, b: T) => {
-  if(typeof a === 'number') return Math.sign(a - (+b));
-  return (""+a).localeCompare(""+b);
+  return (typeof a === 'number') ?
+    (a - (+b)) || 0 :
+    (""+a).localeCompare(""+b);
 };
 
 function isMinLevel(i: number): boolean {
@@ -27,12 +28,12 @@ function extremalDescendant<T>(h: T[], compare: (a: T, b: T) => CMP, i: number, 
   if (rc >= len) { return lc; } // if there's only one child, that's the minimum
 
   // set m to the minimum child
-  let m = compare(h[rc], h[lc]) === C ? rc : lc;
+  let m = Math.sign(compare(h[rc], h[lc])) === C ? rc : lc;
   // check the four grandchildren
   let gc = (i<<2)+3;
   const end = Math.min(gc + 4, len);
   for (; gc < end; gc++) {
-    if (compare(h[gc], h[m]) === C) {
+    if (Math.sign(compare(h[gc], h[m])) === C) {
       m = gc;
     }
   }
@@ -42,7 +43,6 @@ function extremalDescendant<T>(h: T[], compare: (a: T, b: T) => CMP, i: number, 
 export class PriorityDeque<T> {
 
   private heap: T[] = [];
-  private size = 0;
   private limit = Infinity;
 
   private compare: (a: T, b: T) => CMP = defaultComp;
@@ -52,9 +52,8 @@ export class PriorityDeque<T> {
     limit?: number,
     items?: Iterable<T>,
   } = {}) {
-    if (typeof opts.compare === 'function' && opts.compare !== defaultComp) {
-      const c = opts.compare;
-      this.compare = (a, b) => Math.sign(c(a, b));
+    if (typeof opts.compare === 'function') {
+      this.compare = opts.compare;
     }
     if (typeof opts.limit === 'number') {
       this.limit = opts.limit;
@@ -70,7 +69,6 @@ export class PriorityDeque<T> {
       limit: this.limit,
     });
     pd.heap = [...this.heap];
-    pd.size = this.size;
 
     return pd;
   }
@@ -85,23 +83,18 @@ export class PriorityDeque<T> {
 
   public set(elements: Iterable<T>) {
     const items = [...elements];
-    const { length } = items;
     const { limit } = this;
-    if (length > limit) {
-      select(items, limit, this.compare);
-      this.heap = items.slice(0, limit);
-      this.size = limit;
-    } else {
-      this.heap = items;
-      this.size = length;
+    if (items.length > limit) {
+      select(items, limit, (a, b) => Math.sign(this.compare(a, b)) as 0|1|-1);
+      items.length = limit;
     }
+    this.heap = items;
     
-    this.reheap(this.size >> 1);
+    this.reheap(items.length >> 1);
   }
 
   public clear() {
     this.heap.length = 0;
-    this.size = 0;
   }
 
   private trickleDown(i: number) {
@@ -113,14 +106,14 @@ export class PriorityDeque<T> {
       if (m === -1) { return; } // while there are children
       const hi = h[i];
       const hm = h[m];
-      if (compare(hm, hi) === C) { // if h[i] < h[m]
+      if (Math.sign(compare(hm, hi)) === C) { // if h[i] < h[m]
         // swap h[m] and h[i]
         h[i] = hm;
         h[m] = hi;
         if (m > ((i+1)<<1)) { // if m is a grandchild of i
           const parent = (m-1)>>1;
           const hp = h[parent];
-          if (compare(hp, hi) === C) {
+          if (Math.sign(compare(hp, hi)) === C) {
             // swap h[m] and h[parent(m)]
             h[m] = hp;
             h[parent] = hi;
@@ -141,7 +134,7 @@ export class PriorityDeque<T> {
     const p = (i - 1) >> 1;
     const hi = heap[i];
     const hp = heap[p];
-    const cmp = compare(hi, hp);
+    const cmp = Math.sign(compare(hi, hp));
     let moved = false;
 
     let LT = CMP.LT;
@@ -166,7 +159,7 @@ export class PriorityDeque<T> {
       const gp = (((i - 1) >> 1) - 1) >> 1;
       const hi = heap[i];
       const hp = heap[gp];
-      if (compare(hi, hp) === LT) {
+      if (Math.sign(compare(hi, hp)) === LT) {
         heap[i] = hp;
         heap[gp] = hi;
         i = gp;
@@ -184,7 +177,7 @@ export class PriorityDeque<T> {
   }
 
   public get length() {
-    return this.size;
+    return this.heap.length;
   }
 
   public push(...elements: T[]) {
@@ -195,7 +188,8 @@ export class PriorityDeque<T> {
     if (this.limit === 0) return;
     if (elements.length === 0) return;
 
-    const { heap, compare, limit, size } = this;
+    const { heap, compare, limit } = this;
+    let size = heap.length;
 
     const l = elements.length;
     const addable = Math.min(limit - size, l);
@@ -203,21 +197,19 @@ export class PriorityDeque<T> {
     let i = 0;
     if (size === 0) {
       heap[0] = elements[0];
-      this.size = 1;
+      size = 1;
       i = 1;
     }
 
-    for (; i < addable; i++) {
-      const e = elements[i];
-      const index = this.size++;
-      this.heap[index] = e;
-      this.bubbleUp(index);
+    for (; i < addable; i++, size++) {
+      this.heap[size] = elements[i];
+      this.bubbleUp(size);
     }
 
     if (limit === 1) {
       for (; i < l; i++) {
         const e = elements[i];
-        if (compare(e, heap[0]) === CMP.LT) {
+        if (Math.sign(compare(e, heap[0])) === CMP.LT) {
           heap[0] = e;
         }
       }
@@ -226,7 +218,7 @@ export class PriorityDeque<T> {
       let maxE = heap[maxI];
       for (; i < l; i++) {
         const e = elements[i];
-        if (compare(e, maxE) !== CMP.LT) continue;
+        if (Math.sign(compare(e, maxE)) !== CMP.LT) { continue; }
 
         heap[maxI] = e;
         if (!this.bubbleUp(maxI)) {
@@ -240,12 +232,12 @@ export class PriorityDeque<T> {
   }
 
   public pop(): T | undefined {
-    if (this.size === 0) return undefined;
+    if (this.heap.length === 0) { return undefined; }
     return this.removeAt(0);
   }
 
   public shift(): T | undefined {
-    if (this.size === 0) return undefined;
+    if (this.heap.length === 0) { return undefined; }
     return this.removeAt(this.maxIndex());
   }
 
@@ -256,8 +248,7 @@ export class PriorityDeque<T> {
   public map<U>(fn: (e: T) => U, compare: (a: U, b: U) => number = defaultComp): PriorityDeque<U>  {
     const pd = new PriorityDeque({ compare, limit: this.limit });
     pd.heap = this.heap.map(fn);
-    pd.size = this.size;
-    pd.reheap(this.size >> 1);
+    pd.reheap(this.heap.length >> 1);
 
     return pd;
   }
@@ -268,8 +259,7 @@ export class PriorityDeque<T> {
       limit: this.limit,
     });
     pd.heap = this.heap.filter(fn);
-    pd.size = pd.heap.length;
-    pd.reheap(pd.size >> 1);
+    pd.reheap(pd.heap.length >> 1);
 
     return pd;
   }
@@ -280,13 +270,18 @@ export class PriorityDeque<T> {
   ): PriorityDeque<U> {
     const pd = new PriorityDeque({ compare, limit: this.limit });
     const heap: U[] = [];
-    for (const e of this.heap)
-      for (const v of fn(e))
-        heap.push(v);
+    let l = 0;
+    for (const e of this.heap) {
+      for (const v of fn(e)){
+        // can't do a bulk push because we don't
+        // know how big the iterable is, and it
+        // might overflow the max stack frame size.
+        heap[l++] = v;
+      }
+    }
 
     pd.heap = heap;
-    pd.size = heap.length;
-    pd.reheap(pd.size >> 1);
+    pd.reheap(l >> 1);
 
     return pd;
   }
@@ -314,67 +309,58 @@ export class PriorityDeque<T> {
   /** Heap-Specific Methods **/
 
   public findMin(): T | undefined {
-    return this.size > 0 ? this.heap[0] : undefined;
+    return this.heap.length > 0 ? this.heap[0] : undefined;
   }
 
   public findMax() : T | undefined {
-    return this.size > 0 ? this.heap[this.maxIndex()] : undefined;
+    return this.heap.length > 0 ? this.heap[this.maxIndex()] : undefined;
   }
 
   private maxIndex() {
-    if (this.size < 2) return 0;
-    if (this.size === 2) return 1;
-
     const { heap } = this;
-    
-    return this.compare(heap[1], heap[2]) === CMP.LT ? 2 : 1;
+    if (heap.length < 2) { return 0; }
+    if (heap.length === 2) { return 1; }
+
+    return Math.sign(this.compare(heap[1], heap[2])) === CMP.LT ? 2 : 1;
   }
 
   public replaceMin(e: T): T | undefined {
-    if (this.limit === 0) return undefined;
+    if (this.limit === 0) { return undefined; }
 
     const { heap } = this;
+    let size = heap.length;
     const minE = heap[0];
     heap[0] = e;
-    if (this.size > 0) {
-      this.trickleDown(0);
-    } else {
-      this.size = 1;
-    }
+    if (size > 0) { this.trickleDown(0); }
 
     return minE;
   }
 
   public replaceMax(e: T): T | undefined {
-    if (this.limit === 0) return undefined;
+    if (this.limit === 0) { return undefined; }
 
     const { heap } = this;
     const maxI = this.maxIndex();
     const maxE = heap[maxI];
     
     heap[maxI] = e;
-    if (maxI > 0) {
-      if (!this.bubbleUp(maxI)) {
-        this.trickleDown(maxI);
-      }
-    } else {
-      this.size = 1;
+    if (maxI > 0 && !this.bubbleUp(maxI)) {
+      this.trickleDown(maxI);
     }
 
     return maxE;
   }
 
   private removeAt(i: number): T {
-    this.size--;
-    const { size, heap } = this;
+    const { heap } = this;
     const ret = heap[i];
+    const size = heap.length - 1;
     if (size > 0) {
       heap[i] = heap[size];
-      heap.length = size;
       this.trickleDown(i);
-    } else {
-      heap.length = 0;
     }
+    
+    heap.length = size;
 
     return ret;
   }
@@ -382,7 +368,7 @@ export class PriorityDeque<T> {
   public remove(e: T): boolean {
     const { heap } = this;
     const i = heap.indexOf(e);
-    if (i === -1) return false;
+    if (i === -1) { return false; }
 
     this.removeAt(i);
 
@@ -392,15 +378,10 @@ export class PriorityDeque<T> {
   public replace(a: T, b: T): boolean {
     const { heap } = this;
     const i = heap.indexOf(a);
-    if (i === -1) return false;
-    if (i === 0) {
-      heap[0] = b;
-      this.trickleDown(0);
-    } else {
-      heap[i] = b;
-      if (!this.bubbleUp(i)) {
-        this.trickleDown(i);
-      }
+    if (i === -1) { return false; }
+    heap[i] = b;
+    if (i === 0 || !this.bubbleUp(i)) {
+      this.trickleDown(i);
     }
 
     return true;
